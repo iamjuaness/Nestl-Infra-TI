@@ -1,0 +1,271 @@
+version: '3.8'
+
+networks:
+  frontend:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.10.0/24
+  backend:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.20.0/24
+  management:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.30.0/24
+
+volumes:
+  nestle_db_data:
+    driver: local
+  nestle_web_data:
+    driver: local
+  nestle_files_data:
+    driver: local
+  nestle_backup:
+    driver: local
+  nestle_logs:
+    driver: local
+
+services:
+  # ==========================================
+  # LOAD BALANCER / PROXY (Alta Disponibilidad)
+  # ==========================================
+  nginx_lb:
+    image: nginx:alpine
+    container_name: nestle_nginx_lb
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./configs/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./configs/nginx/ssl:/etc/nginx/ssl:ro
+    networks:
+      - frontend
+    depends_on:
+      - web_primary
+      - web_secondary
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==========================================
+  # SERVICIOS WEB (Apache - Alta Disponibilidad)
+  # ==========================================
+  web_primary:
+    build:
+      context: ./docker/apache
+      dockerfile: Dockerfile.apache
+    container_name: nestle_web_primary
+    hostname: web-primary.nestle.local
+    environment:
+      - SERVER_ROLE=primary
+      - DB_HOST=db_primary
+      - DB_NAME=nestle_db
+      - DB_USER=nestle_user
+      - DB_PASS=nestle_secure_2026
+    volumes:
+      - nestle_web_data:/var/www/html
+      - nestle_logs:/var/log/apache2
+    networks:
+      - frontend
+      - backend
+    depends_on:
+      - db_primary
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health.php"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  web_secondary:
+    build:
+      context: ./docker/apache
+      dockerfile: Dockerfile.apache
+    container_name: nestle_web_secondary
+    hostname: web-secondary.nestle.local
+    environment:
+      - SERVER_ROLE=secondary
+      - DB_HOST=db_primary
+      - DB_NAME=nestle_db
+      - DB_USER=nestle_user
+      - DB_PASS=nestle_secure_2026
+    volumes:
+      - nestle_web_data:/var/www/html
+      - nestle_logs:/var/log/apache2
+    networks:
+      - frontend
+      - backend
+    depends_on:
+      - db_primary
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health.php"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==========================================
+  # BASE DE DATOS (MySQL con Replica)
+  # ==========================================
+  db_primary:
+    image: mysql:8.0
+    container_name: nestle_db_primary
+    hostname: db-primary.nestle.local
+    environment:
+      - MYSQL_ROOT_PASSWORD=nestle_root_2026
+      - MYSQL_DATABASE=nestle_db
+      - MYSQL_USER=nestle_user
+      - MYSQL_PASSWORD=nestle_secure_2026
+      - MYSQL_REPLICATION_USER=repl_user
+      - MYSQL_REPLICATION_PASSWORD=repl_secure_2026
+    volumes:
+      - nestle_db_data:/var/lib/mysql
+      - ./configs/mysql/primary.cnf:/etc/mysql/conf.d/custom.cnf:ro
+      - ./configs/mysql/init:/docker-entrypoint-initdb.d:ro
+      - nestle_backup:/backup
+    networks:
+      - backend
+      - management
+    ports:
+      - "3306:3306"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  db_replica:
+    image: mysql:8.0
+    container_name: nestle_db_replica
+    hostname: db-replica.nestle.local
+    environment:
+      - MYSQL_ROOT_PASSWORD=nestle_root_2026
+      - MYSQL_REPLICATION_USER=repl_user
+      - MYSQL_REPLICATION_PASSWORD=repl_secure_2026
+    volumes:
+      - ./configs/mysql/replica.cnf:/etc/mysql/conf.d/custom.cnf:ro
+      - nestle_backup:/backup
+    networks:
+      - backend
+      - management
+    depends_on:
+      - db_primary
+    restart: unless-stopped
+
+  # ==========================================
+  # SERVICIO DE ARCHIVOS (NFS/Samba via container)
+  # ==========================================
+  fileserver:
+    image: dperson/samba
+    container_name: nestle_fileserver
+    hostname: files.nestle.local
+    environment:
+      - USERID=1000
+      - GROUPID=1000
+      - TZ=America/Bogota
+    volumes:
+      - nestle_files_data:/shared
+      - ./configs/samba/smb.conf:/etc/samba/smb.conf:ro
+    networks:
+      - management
+      - backend
+    ports:
+      - "139:139"
+      - "445:445"
+    restart: unless-stopped
+
+  # ==========================================
+  # SERVIDOR NTP
+  # ==========================================
+  ntp:
+    image: cturra/ntp
+    container_name: nestle_ntp
+    hostname: ntp.nestle.local
+    environment:
+      - NTP_SERVERS=time.google.com,time.cloudflare.com,pool.ntp.org
+    ports:
+      - "123:123/udp"
+    networks:
+      - management
+    restart: unless-stopped
+    cap_add:
+      - SYS_TIME
+
+  # ==========================================
+  # MONITOREO (Prometheus + Grafana)
+  # ==========================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: nestle_prometheus
+    volumes:
+      - ./configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - management
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: nestle_grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=nestle_grafana_2026
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./configs/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./configs/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    networks:
+      - management
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+
+  node_exporter:
+    image: prom/node-exporter:latest
+    container_name: nestle_node_exporter
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    networks:
+      - management
+    restart: unless-stopped
+
+  # ==========================================
+  # SSH BASTION (Jump Server)
+  # ==========================================
+  ssh_bastion:
+    image: linuxserver/openssh-server
+    container_name: nestle_ssh_bastion
+    hostname: bastion.nestle.local
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=America/Bogota
+      - SUDO_ACCESS=false
+      - PASSWORD_ACCESS=false
+      - USER_NAME=nestle_admin
+    volumes:
+      - ./configs/ssh/authorized_keys:/config/.ssh/authorized_keys:ro
+      - nestle_logs:/var/log
+    networks:
+      - management
+    ports:
+      - "2222:2222"
+    restart: unless-stopped
+
+volumes:
+  prometheus_data:
+  grafana_data:

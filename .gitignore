@@ -1,0 +1,36 @@
+# Docker
+.env
+*.env
+docker-compose.override.yml
+
+# Logs
+*.log
+logs/
+
+# Backups
+backup/
+*.tar.gz
+*.sql.gz
+
+# SSL (en producción usar certificados reales)
+*.key
+*.crt
+*.pem
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node (si se usa)
+node_modules/
+
+# Temporales
+*.tmp
+*.temp
+/tmp/

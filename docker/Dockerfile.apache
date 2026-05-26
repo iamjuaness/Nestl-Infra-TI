@@ -1,0 +1,44 @@
+FROM php:8.2-apache
+
+# Instalar dependencias necesarias
+RUN apt-get update && apt-get install -y \
+    libpng-dev \
+    libjpeg-dev \
+    libfreetype6-dev \
+    libzip-dev \
+    libonig-dev \
+    curl \
+    vim \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install gd mysqli pdo pdo_mysql zip \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Habilitar modulos Apache
+RUN a2enmod rewrite ssl headers proxy proxy_http status
+
+# Configurar directorio de trabajo
+WORKDIR /var/www/html
+
+# Copiar archivos de la aplicación
+COPY ./app/ /var/www/html/
+
+# Copiar configuración virtualhost
+COPY ./configs/apache/000-default.conf /etc/apache2/sites-available/000-default.conf
+
+# Script de healthcheck
+RUN echo '<?php echo "OK"; ?>' > /var/www/html/health.php
+
+# Permisos seguros
+RUN chown -R www-data:www-data /var/www/html \
+    && chmod -R 755 /var/www/html \
+    && chmod 644 /var/www/html/health.php
+
+# Exponer puertos
+EXPOSE 80 443
+
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost/health.php || exit 1
+
+CMD ["apache2-foreground"]

@@ -1,0 +1,22 @@
+[mysqld]
+server-id = 1
+log_bin = mysql-bin
+binlog_format = ROW
+binlog_do_db = nestle_db
+expire_logs_days = 7
+max_binlog_size = 100M
+
+# Rendimiento
+innodb_buffer_pool_size = 512M
+innodb_log_file_size = 128M
+max_connections = 200
+
+# Seguridad
+local_infile = 0
+skip-symbolic-links
+require_secure_transport = ON
+
+# Logging
+slow_query_log = 1
+slow_query_log_file = /var/lib/mysql/slow.log
+long_query_time = 2

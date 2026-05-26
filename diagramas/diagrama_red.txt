@@ -1,0 +1,146 @@
+
+================================================================================
+                    DIAGRAMA DE RED - INFRAESTRUCTURA NESTLÉ
+================================================================================
+
+                                    INTERNET
+                                       |
+                                       |
+                              +--------v--------+
+                              |    ROUTER       |
+                              |   192.168.1.1   |
+                              +--------+--------+
+                                       |
+                    +------------------+------------------+
+                    |                                     |
+           +--------v---------+                   +-------v--------+
+           |    DMZ / WAN     |                   |   LAN / MGMT   |
+           |   172.20.10.0/24 |                   |  172.20.30.0/24|
+           +--------+---------+                   +-------+--------+
+                    |                                     |
+    +---------------+---------------+           +---------v---------+
+    |                               |           |   SSH BASTION     |
+    |  +-------------------------+  |           |   172.20.30.10    |
+    |  |   NGINX LOAD BALANCER  |  |           |   Puerto: 2222    |
+    |  |   172.20.10.10         |  |           |   Auth: SSH Keys  |
+    |  |   HTTP:80 / HTTPS:443  |  |           +---------+---------+
+    |  +-----------+-------------+  |                     |
+    |              |                |                     |
+    |    +---------+---------+      |           +---------v---------+
+    |    |                   |      |           |   MONITOREO       |
+    | +--v------+    +------v--+   |           |   172.20.30.20    |
+    | | WEB     |    | WEB     |   |           |   Prometheus:9090 |
+    | | PRIMARY |    | SECOND. |   |           +---------+---------+
+    | |:80      |    |:80      |   |                     |
+    | |172.20.10|    |172.20.10|   |           +---------v---------+
+    | |.11      |    |.12      |   |           |   GRAFANA         |
+    | +----+----+    +----+----+   |           |   172.20.30.21    |
+    |      |              |        |           |   Puerto: 3000    |
+    |      +-------+------+        |           +-------------------+
+    |              |                 |
+    |              |                 |
+    |     +--------v--------+        |
+    |     |   BACKEND NET   |        |
+    |     | 172.20.20.0/24  |        |
+    |     +--------+--------+        |
+    |              |                 |
+    |  +-----------v------------+    |
+    |  |                       |    |
+    |  |  +-----------------+  |    |
+    |  |  |  DB PRIMARY     |  |    |
+    |  |  |  MySQL 8.0      |  |    |
+    |  |  |  172.20.20.10   |  |    |
+    |  |  |  Puerto: 3306   |  |    |
+    |  |  +--------+--------+  |    |
+    |  |           |           |    |
+    |  |  +--------v--------+  |    |
+    |  |  |  DB REPLICA     |  |    |
+    |  |  |  MySQL 8.0      |  |    |
+    |  |  |  172.20.20.11   |  |    |
+    |  |  |  Puerto: 3306   |  |    |
+    |  |  +-----------------+  |    |
+    |  |                       |    |
+    |  |  +-----------------+  |    |
+    |  |  |  FILE SERVER    |  |    |
+    |  |  |  Samba          |  |    |
+    |  |  |  172.20.20.20   |  |    |
+    |  |  |  SMB:139/445    |  |    |
+    |  |  +-----------------+  |    |
+    |  |                       |    |
+    |  |  +-----------------+  |    |
+    |  |  |  NTP SERVER     |  |    |
+    |  |  |  172.20.20.30   |  |    |
+    |  |  |  Puerto:123/udp |  |    |
+    |  |  +-----------------+  |    |
+    |  |                       |    |
+    |  +-----------------------+    |
+    |                               |
+    +-------------------------------+
+
+================================================================================
+                         TABLA DE DIRECCIONAMIENTO IP
+================================================================================
+
+| Servicio          | IP              | Puerto      | Red           | Rol       |
+|-------------------|-----------------|-------------|---------------|-----------|
+| nginx_lb          | 172.20.10.10    | 80, 443     | Frontend      | Proxy     |
+| web_primary       | 172.20.10.11    | 80          | Frontend      | Web       |
+| web_secondary     | 172.20.10.12    | 80          | Frontend      | Web       |
+| db_primary        | 172.20.20.10    | 3306        | Backend       | DB Master |
+| db_replica        | 172.20.20.11    | 3306        | Backend       | DB Slave  |
+| fileserver        | 172.20.20.20    | 139, 445    | Backend       | Files     |
+| ntp               | 172.20.20.30    | 123/udp     | Backend       | Time      |
+| ssh_bastion       | 172.20.30.10    | 2222        | Management    | Access    |
+| prometheus        | 172.20.30.20    | 9090        | Management    | Metrics   |
+| grafana           | 172.20.30.21    | 3000        | Management    | Dashboard |
+
+================================================================================
+                         SEGMENTACIÓN DE RED (VLANs)
+================================================================================
+
+VLAN 10 - FRONTEND (Pública/DMZ)
+  Propósito: Servicios expuestos a internet
+  Subred: 172.20.10.0/24
+  Gateway: 172.20.10.1
+  Servicios: Nginx LB, Web servers
+  Política: Acceso desde internet solo a puertos 80/443
+
+VLAN 20 - BACKEND (Privada)
+  Propósito: Comunicación interna entre servicios
+  Subred: 172.20.20.0/24
+  Gateway: 172.20.20.1
+  Servicios: Base de datos, archivos, NTP
+  Política: Solo acceso desde VLAN 10 y 30
+
+VLAN 30 - MANAGEMENT (Administración)
+  Propósito: Acceso administrativo y monitoreo
+  Subred: 172.20.30.0/24
+  Gateway: 172.20.30.1
+  Servicios: SSH bastion, Prometheus, Grafana
+  Política: Solo acceso desde IPs administrativas
+
+================================================================================
+                         FLUJO DE TRÁFICO
+================================================================================
+
+1. USUARIO -> https://nestle.local
+   -> Nginx LB (VLAN 10) 
+   -> Web Primary o Secondary (VLAN 10)
+   -> MySQL Primary (VLAN 20)
+   <- Respuesta al usuario
+
+2. ADMIN -> ssh -p 2222 bastion.nestle.local
+   -> SSH Bastion (VLAN 30)
+   -> Acceso a servicios internos
+
+3. MONITOREO -> http://prometheus:9090
+   -> Prometheus (VLAN 30)
+   -> Métricas de todos los servicios
+   -> Grafana visualiza datos
+
+4. BACKUP -> 2:00 AM diario
+   -> Script backup_nestle.sh
+   -> MySQL dump + web files + configs + logs
+   -> Almacenamiento en /backup/nestle/
+
+================================================================================
