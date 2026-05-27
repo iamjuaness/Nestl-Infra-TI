@@ -78,6 +78,7 @@ while grep -q "resync" /proc/mdstat 2>/dev/null; do
 done
 
 # Guardar configuración
+mkdir -p /etc/mdadm
 mdadm --detail --scan > /etc/mdadm/mdadm.conf 2>/dev/null || mdadm --detail --scan > /etc/mdadm.conf 2>/dev/null || true
 
 update-initramfs -u 2>/dev/null || true
@@ -137,7 +138,7 @@ log "${YELLOW}--- CONFIGURANDO PERMISOS ---${NC}"
 chown -R www-data:www-data /mnt/nestle_web
 chmod 755 /mnt/nestle_web
 
-chown -R mysql:mysql /mnt/nestle_db
+chown -R 999:999 /mnt/nestle_db
 chmod 750 /mnt/nestle_db
 
 chown -R root:root /mnt/nestle_backup

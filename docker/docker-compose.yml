@@ -31,7 +31,7 @@ services:
   web_primary:
     build:
       context: .
-      dockerfile: Dockerfile.apache
+      dockerfile: ./apache/Dockerfile.apache
     container_name: nestle_web_primary
     hostname: web-primary.nestle.local
     environment:
@@ -58,7 +58,7 @@ services:
   web_secondary:
     build:
       context: .
-      dockerfile: Dockerfile.apache
+      dockerfile: ./apache/Dockerfile.apache
     container_name: nestle_web_secondary
     hostname: web-secondary.nestle.local
     environment:
@@ -163,7 +163,7 @@ services:
     environment:
       - NTP_SERVERS=time.google.com,time.cloudflare.com,pool.ntp.org
     ports:
-      - "123:123/udp"
+      - "1123:123/udp"
     networks:
       - management
     restart: unless-stopped
