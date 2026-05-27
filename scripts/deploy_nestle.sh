@@ -8,6 +8,7 @@
 set -euo pipefail
 
 LOG_FILE="/var/log/nestle/deploy.log"
+mkdir -p "$(dirname "$LOG_FILE")"
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV="${1:-production}"
 
@@ -171,7 +172,7 @@ log "Construyendo imágenes..."
 docker-compose build --no-cache
 
 # Iniciar servicios
-log "Iniciando servicios..."
+log "Iniciando servicios..."    
 docker-compose up -d
 
 # Esperar a que los servicios estén listos

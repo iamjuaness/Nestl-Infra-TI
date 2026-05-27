@@ -70,11 +70,11 @@ for failed in "${FAILED_SERVICES[@]}"; do
 
     case "$service" in
         "nginx")
-            docker-compose -f /docker/docker-compose.yml up -d nginx_lb 2>/dev/null ||             docker start "$container" 2>/dev/null || true
+            docker-compose -f /docker-compose.yml up -d nginx_lb 2>/dev/null ||             docker start "$container" 2>/dev/null || true
             ;;
 
         "apache")
-            docker-compose -f /docker/docker-compose.yml up -d "$container" 2>/dev/null ||             docker start "$container" 2>/dev/null || true
+            docker-compose -f /docker-compose.yml up -d "$container" 2>/dev/null ||             docker start "$container" 2>/dev/null || true
             ;;
 
         "mysql")
@@ -96,7 +96,7 @@ for failed in "${FAILED_SERVICES[@]}"; do
             ;;
 
         "samba"|"ntp"|"prometheus"|"grafana")
-            docker-compose -f /docker/docker-compose.yml up -d "$container" 2>/dev/null ||             docker start "$container" 2>/dev/null || true
+            docker-compose -f /docker-compose.yml up -d "$container" 2>/dev/null ||             docker start "$container" 2>/dev/null || true
             ;;
     esac
 

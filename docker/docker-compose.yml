@@ -1,34 +1,5 @@
 version: '3.8'
 
-networks:
-  frontend:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.10.0/24
-  backend:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.20.0/24
-  management:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.30.0/24
-
-volumes:
-  nestle_db_data:
-    driver: local
-  nestle_web_data:
-    driver: local
-  nestle_files_data:
-    driver: local
-  nestle_backup:
-    driver: local
-  nestle_logs:
-    driver: local
-
 services:
   # ==========================================
   # LOAD BALANCER / PROXY (Alta Disponibilidad)
@@ -59,7 +30,7 @@ services:
   # ==========================================
   web_primary:
     build:
-      context: ./docker/apache
+      context: ./apache
       dockerfile: Dockerfile.apache
     container_name: nestle_web_primary
     hostname: web-primary.nestle.local
@@ -86,7 +57,7 @@ services:
 
   web_secondary:
     build:
-      context: ./docker/apache
+      context: ./
       dockerfile: Dockerfile.apache
     container_name: nestle_web_secondary
     hostname: web-secondary.nestle.local
@@ -267,5 +238,34 @@ services:
     restart: unless-stopped
 
 volumes:
+  nestle_db_data:
+    driver: local
+  nestle_web_data:
+    driver: local
+  nestle_files_data:
+    driver: local
+  nestle_backup:
+    driver: local
+  nestle_logs:
+    driver: local
   prometheus_data:
+    driver: local
   grafana_data:
+    driver: local
+
+networks:
+  frontend:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.10.0/24
+  backend:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.20.0/24
+  management:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.30.0/24

@@ -70,8 +70,8 @@ fi
 # 3. BACKUP DE CONFIGURACIONES
 #-------------------------------------------------------------------------------
 log "${YELLOW}Realizando backup de configuraciones...${NC}"
-tar czf "$BACKUP_DIR/configs/docker_configs.tar.gz" -C / docker/ configs/ 2>/dev/null || true
-cp docker/docker-compose.yml "$BACKUP_DIR/configs/" 2>/dev/null || true
+tar czf "$BACKUP_DIR/configs/docker_configs.tar.gz" -C / / configs/ 2>/dev/null || true
+cp /docker-compose.yml "$BACKUP_DIR/configs/" 2>/dev/null || true
 log "${GREEN}✓ Backup de configuraciones completado${NC}"
 
 #-------------------------------------------------------------------------------

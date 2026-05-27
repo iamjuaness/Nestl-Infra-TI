@@ -57,10 +57,10 @@ sudo ./scripts/raid_lvm_setup.sh
 ### Paso 6: Verificar que todo funciona
 ```bash
 # Ver servicios corriendo
-docker-compose -f docker/docker-compose.yml ps
+docker-compose -f /docker-compose.yml ps
 
 # Ver logs
-docker-compose -f docker/docker-compose.yml logs -f
+docker-compose -f /docker-compose.yml logs -f
 
 # Probar web
 curl http://localhost
@@ -95,13 +95,13 @@ docker exec -it nestle_db_primary mysql -u root -p
 
 ```bash
 # Detener todos los servicios
-docker-compose -f docker/docker-compose.yml down
+docker-compose -f /docker-compose.yml down
 
 # Reiniciar un servicio específico
-docker-compose -f docker/docker-compose.yml restart web_primary
+docker-compose -f /docker-compose.yml restart web_primary
 
 # Escalar servicios web (alta disponibilidad)
-docker-compose -f docker/docker-compose.yml up -d --scale web_primary=3
+docker-compose -f /docker-compose.yml up -d --scale web_primary=3
 
 # Ver logs de un servicio específico
 docker logs -f nestle_db_primary
@@ -148,7 +148,7 @@ chmod +x scripts/*.sh
 docker logs nestle_db_primary
 
 # Verificar configuración
-docker-compose -f docker/docker-compose.yml config
+docker-compose -f /docker-compose.yml config
 ```
 
 ---

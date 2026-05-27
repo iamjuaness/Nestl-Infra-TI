@@ -206,13 +206,13 @@ Este documento describe el diseño, implementación y operación de la infraestr
 ./scripts/deploy_nestle.sh
 
 # Ver estado de servicios
-docker-compose -f docker/docker-compose.yml ps
+docker-compose -f /docker-compose.yml ps
 
 # Ver logs
-docker-compose -f docker/docker-compose.yml logs -f
+docker-compose -f /docker-compose.yml logs -f
 
 # Escalar servicios web
-docker-compose -f docker/docker-compose.yml up -d --scale web_primary=2
+docker-compose -f /docker-compose.yml up -d --scale web_primary=2
 
 # Backup manual
 ./scripts/backup_nestle.sh

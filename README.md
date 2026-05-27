@@ -26,7 +26,7 @@ chmod +x scripts/*.sh
 sudo ./scripts/deploy_nestle.sh production
 
 # 3. Verificar servicios
-docker-compose -f docker/docker-compose.yml ps
+docker-compose -f /docker-compose.yml ps
 ```
 
 ### Acceso a Servicios
@@ -43,7 +43,7 @@ docker-compose -f docker/docker-compose.yml ps
 
 ```
 nestle_infra_ti/
-├── docker/
+├── /
 │   ├── docker-compose.yml      # Orquestación de servicios
 │   └── Dockerfile.apache       # Imagen personalizada Apache
 ├── configs/
@@ -96,10 +96,10 @@ nestle_infra_ti/
 
 ```bash
 # Escalar servicios web
-docker-compose -f docker/docker-compose.yml up -d --scale web_primary=3
+docker-compose -f /docker-compose.yml up -d --scale web_primary=3
 
 # Ver logs en tiempo real
-docker-compose -f docker/docker-compose.yml logs -f
+docker-compose -f /docker-compose.yml logs -f
 
 # Backup manual
 ./scripts/backup_nestle.sh
