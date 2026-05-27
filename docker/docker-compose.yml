@@ -30,7 +30,7 @@ services:
   # ==========================================
   web_primary:
     build:
-      context: ./apache
+      context: .
       dockerfile: Dockerfile.apache
     container_name: nestle_web_primary
     hostname: web-primary.nestle.local
@@ -57,7 +57,7 @@ services:
 
   web_secondary:
     build:
-      context: ./apache
+      context: .
       dockerfile: Dockerfile.apache
     container_name: nestle_web_secondary
     hostname: web-secondary.nestle.local

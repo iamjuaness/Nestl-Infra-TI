@@ -21,7 +21,7 @@ RUN a2enmod rewrite ssl headers proxy proxy_http status
 WORKDIR /var/www/html
 
 # Copiar archivos de la aplicación
-COPY ./app/ /var/www/html/
+COPY ./apache/app/ /var/www/html/
 
 
 # Copiar configuración virtualhost
