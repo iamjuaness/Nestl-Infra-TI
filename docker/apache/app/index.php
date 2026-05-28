@@ -10,15 +10,35 @@ $db_name = getenv('DB_NAME') ?: 'nestle_db';
 $db_user = getenv('DB_USER') ?: 'nestle_user';
 $db_pass = getenv('DB_PASS') ?: 'nestle_secure_2026';
 
-// Conexión a base de datos
+// Opciones PDO para conexión segura
+$options = [
+    PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => false,
+    PDO::MYSQL_ATTR_SSL_CA => '/etc/ssl/certs/ca-certificates.crt',
+    PDO::MYSQL_ATTR_SSL_CERT => '/etc/ssl/certs/client-cert.pem',
+    PDO::MYSQL_ATTR_SSL_KEY => '/etc/ssl/private/client-key.pem',
+    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    PDO::ATTR_EMULATE_PREPARES => false,
+];
+
+// Conexión a base de datos con SSL
 try {
-    $pdo = new PDO("mysql:host=$db_host;dbname=$db_name;charset=utf8", $db_user, $db_pass);
-    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    $db_status = "✓ Conectado";
+    $dsn = "mysql:host=$db_host;dbname=$db_name;charset=utf8mb4";
+    $pdo = new PDO($dsn, $db_user, $db_pass, $options);
+    $db_status = "✓ Conectado (SSL)";
     $db_color = "#28a745";
 } catch (PDOException $e) {
-    $db_status = "✗ Error: " . $e->getMessage();
-    $db_color = "#dc3545";
+    // Fallback: intentar sin SSL si no hay certificados configurados
+    try {
+        $pdo_fallback = new PDO("mysql:host=$db_host;dbname=$db_name;charset=utf8mb4", $db_user, $db_pass);
+        $pdo_fallback->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $pdo = $pdo_fallback;
+        $db_status = "✓ Conectado (sin SSL)";
+        $db_color = "#ffc107";
+    } catch (PDOException $e2) {
+        $db_status = "✗ Error: " . $e2->getMessage();
+        $db_color = "#dc3545";
+    }
 }
 
 // Información del servidor
@@ -95,6 +115,7 @@ $hostname = gethostname();
         .badge-success { background: #d4edda; color: #155724; }
         .badge-warning { background: #fff3cd; color: #856404; }
         .badge-danger { background: #f8d7da; color: #721c24; }
+        .badge-info { background: #d1ecf1; color: #0c5460; }
         .footer {
             text-align: center;
             padding: 30px;
@@ -122,6 +143,14 @@ $hostname = gethostname();
             color: #1e3c72;
             font-weight: 600;
         }
+        .alert-box {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #856404;
+        }
     </style>
 </head>
 <body>
@@ -135,6 +164,14 @@ $hostname = gethostname();
                 <strong>IP:</strong> <?php echo htmlspecialchars($server_ip); ?>
             </div>
         </div>
+
+        <?php if (strpos($db_status, 'sin SSL') !== false): ?>
+        <div class="alert-box">
+            <strong>⚠ Nota de Seguridad:</strong> La conexión a la base de datos no utiliza SSL. 
+            Esto es normal en entornos de desarrollo. En producción, habilite require_secure_transport=ON 
+            y configure certificados SSL para MySQL.
+        </div>
+        <?php endif; ?>
 
         <div class="status-grid">
             <div class="card">
@@ -174,7 +211,7 @@ $hostname = gethostname();
             <div class="card">
                 <h3>🔒 Seguridad</h3>
                 <div class="status-item">
-                    <span>SSL/TLS</span>
+                    <span>SSL/TLS (Web)</span>
                     <span class="badge badge-success">✓ Habilitado</span>
                 </div>
                 <div class="status-item">
@@ -204,7 +241,7 @@ $hostname = gethostname();
             </div>
         </div>
 
-        <?php if (isset($pdo)): ?>
+        <?php if (isset($pdo) && strpos($db_status, 'Error') === false): ?>
         <div class="card" style="margin-top: 30px;">
             <h3>👥 Empleados del Departamento de TI</h3>
             <table>

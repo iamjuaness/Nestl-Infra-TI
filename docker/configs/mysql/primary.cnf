@@ -14,7 +14,9 @@ max_connections = 200
 # Seguridad
 local_infile = 0
 skip-symbolic-links
-require_secure_transport = ON
+# NOTA: require_secure_transport desactivado para entorno de desarrollo
+# En producción, habilitar y configurar certificados SSL para conexiones MySQL
+# require_secure_transport = ON
 
 # Logging
 slow_query_log = 1

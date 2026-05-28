@@ -131,6 +131,20 @@ services:
       - db_primary
     restart: unless-stopped
 
+  mysqld_exporter:
+    image: prom/mysqld-exporter:latest
+    container_name: nestle_mysqld_exporter
+    environment:
+      - DATA_SOURCE_NAME=monitor:monitor_2026@(db_primary:3306)/
+    networks:
+      - backend
+      - management
+    ports:
+      - "9104:9104"
+    depends_on:
+      - db_primary
+    restart: unless-stopped
+
   # ==========================================
   # SERVICIO DE ARCHIVOS (NFS/Samba via container)
   # ==========================================
@@ -235,6 +249,20 @@ services:
       - management
     ports:
       - "2222:2222"
+    restart: unless-stopped
+
+  nginx_exporter:
+    image: nginx/nginx-prometheus-exporter:latest
+    container_name: nestle_nginx_exporter
+    command:
+      - "--nginx.scrape-uri=http://nginx_lb:8080/stub_status"
+    networks:
+      - frontend
+      - management
+    ports:
+      - "9113:9113"
+    depends_on:
+      - nginx_lb
     restart: unless-stopped
 
 volumes:
